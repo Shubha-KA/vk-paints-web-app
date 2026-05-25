@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: quotation-config
-  namespace: vkpaints-dev-ns
-data:
-  PORT: "3000"
-  DB_URL: "postgres://postgres:postgres@postgres:5432/quotation_db"

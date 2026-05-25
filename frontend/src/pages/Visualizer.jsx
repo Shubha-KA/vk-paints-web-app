@@ -138,12 +138,13 @@ export default function Visualizer() {
 
   return (
     <div>
-      {/* Page header */}
-      <div style={{ marginBottom:'1.25rem' }}>
-        <h2 style={{ fontSize:'1.75rem', fontWeight:'700', letterSpacing:'-0.025em' }}>Paint Visualizer</h2>
-        <p className="text-muted" style={{ marginTop:'0.2rem', fontSize:'0.9rem' }}>
-          Upload your room photo · click any wall to paint · edge detection stops fill at furniture
-        </p>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Paint Visualizer</h2>
+          <p className="text-muted mt-2 text-sm">
+            Upload your room photo · click any wall to paint · edge detection stops fill at furniture
+          </p>
+        </div>
       </div>
 
       {/*
@@ -160,25 +161,25 @@ export default function Visualizer() {
           {/* Upload drop zone */}
           {!hasImage && (
             <div onClick={()=>fileInputRef.current.click()} style={{
-              border:'2px dashed var(--border)', borderRadius:'var(--radius-md)',
+              border:'2px dashed var(--border-color)', borderRadius:'var(--radius-xl)',
               padding:'2.5rem 1.5rem', textAlign:'center', cursor:'pointer',
               background:'var(--primary-light)', minHeight:'260px',
               display:'flex', flexDirection:'column', alignItems:'center',
-              justifyContent:'center', gap:'0.85rem', transition:'var(--transition)'
+              justifyContent:'center', gap:'0.85rem', transition:'var(--transition-base)'
             }}
               onMouseEnter={e=>e.currentTarget.style.borderColor='var(--primary)'}
-              onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border)'}
+              onMouseLeave={e=>e.currentTarget.style.borderColor='var(--border-color)'}
             >
               <div style={{ fontSize:'2.5rem' }}>🖼️</div>
               <div>
-                <p style={{ fontWeight:'600', fontSize:'1rem' }}>Upload Room Image</p>
-                <p className="text-muted" style={{ fontSize:'0.85rem', marginTop:'0.2rem' }}>JPG · PNG · WEBP</p>
+                <p className="font-semibold text-lg text-main">Upload Room Image</p>
+                <p className="text-muted text-sm mt-2">JPG · PNG · WEBP</p>
               </div>
-              <button className="btn btn-primary" style={{ fontSize:'0.85rem' }} onClick={e=>{e.stopPropagation();fileInputRef.current.click();}}>
+              <button className="btn btn-primary" onClick={e=>{e.stopPropagation();fileInputRef.current.click();}}>
                 📁 Browse Files
               </button>
-              <span className="text-muted" style={{ fontSize:'0.78rem' }}>— or —</span>
-              <button className="btn btn-secondary" style={{ fontSize:'0.8rem', padding:'0.35rem 0.85rem' }} onClick={e=>{e.stopPropagation();loadSample();}}>
+              <span className="text-muted text-sm">— or —</span>
+              <button className="btn btn-secondary text-sm" onClick={e=>{e.stopPropagation();loadSample();}}>
                 Try Sample Image
               </button>
             </div>
@@ -188,16 +189,16 @@ export default function Visualizer() {
             display: hasImage?'block':'none',
             width:'100%', height:'auto',
             cursor: isPainting?'wait': isErase?'cell':'crosshair',
-            borderRadius:'var(--radius-md)',
-            border:`2px solid ${isErase?'#EF4444':'var(--border)'}`,
-            transition:'border-color 0.2s'
+            borderRadius:'var(--radius-xl)',
+            border:`2px solid ${isErase?'var(--danger)':'var(--border-color)'}`,
+            transition:'border-color var(--transition-fast)'
           }}/>
 
           {hasImage && (
-            <div style={{ display:'flex', gap:'0.5rem', marginTop:'0.75rem', flexWrap:'wrap' }}>
-              <button className="btn btn-primary" style={{ fontSize:'0.8rem', padding:'0.45rem 0.85rem' }} onClick={()=>fileInputRef.current.click()}>📁 Change</button>
-              <button className="btn" style={{ fontSize:'0.8rem', padding:'0.45rem 0.85rem', background:'var(--primary-light)', color:'var(--primary)' }} onClick={handleReset}>↺ Reset</button>
-              <button className="btn btn-secondary" style={{ fontSize:'0.8rem', padding:'0.45rem 0.85rem' }} onClick={handleDownload}>⬇ Download</button>
+            <div className="flex gap-2 mt-4 flex-wrap">
+              <button className="btn btn-primary" onClick={()=>fileInputRef.current.click()}>📁 Change</button>
+              <button className="btn btn-secondary" onClick={handleReset}>↺ Reset</button>
+              <button className="btn btn-secondary" onClick={handleDownload}>⬇ Download</button>
             </div>
           )}
 

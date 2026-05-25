@@ -3,16 +3,17 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const API_BASE = '';
 
+import { Paintbrush } from 'lucide-react';
+import toast from 'react-hot-toast';
+
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
@@ -40,8 +41,9 @@ export default function Login({ onLogin }) {
       } else {
         navigate('/');
       }
+      toast.success('Logged in successfully!');
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -49,19 +51,15 @@ export default function Login({ onLogin }) {
 
   return (
     <div className="auth-page">
-      <div className="floating-shape"></div>
-      <div className="floating-shape"></div>
-      <div className="floating-shape"></div>
-
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-logo">
-            <div className="logo-icon">🎨</div>
+            <div className="flex justify-center mb-4">
+              <Paintbrush size={48} className="text-primary" style={{ color: 'var(--primary)' }} />
+            </div>
             <h1>Welcome Back</h1>
             <p>Sign in to V K Paints Platform</p>
           </div>
-
-          {error && <div className="auth-error">{error}</div>}
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -90,7 +88,7 @@ export default function Login({ onLogin }) {
               />
             </div>
 
-            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+            <button type="submit" className="btn btn-primary w-full mt-4" disabled={loading} style={{ padding: '0.75rem' }}>
               {loading ? <><span className="spinner"></span> Signing in...</> : 'Sign In'}
             </button>
           </form>

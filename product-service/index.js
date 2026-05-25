@@ -4,7 +4,7 @@ const { Sequelize, DataTypes } = require('sequelize');
 const app = express();
 app.use(express.json());
 
-const sequelize = new Sequelize(process.env.DB_URL || 'postgres://postgres:postgres@localhost:5432/product_db');
+const sequelize = new Sequelize(process.env.DB_URL || 'sqlite:database.sqlite');
 
 const Product = sequelize.define('Product', {
     name: { type: DataTypes.STRING, allowNull: false },

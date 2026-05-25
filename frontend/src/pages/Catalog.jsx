@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 const API_BASE = '';
 
 export default function Catalog() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export default function Catalog() {
       const data = await res.json();
       setProducts(data);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
       // Fallback to empty
       setProducts([]);
     } finally {
@@ -52,81 +52,79 @@ export default function Catalog() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px', borderColor: 'rgba(99,102,241,0.2)', borderTopColor: 'var(--primary)' }}></div>
+      <div>
+        <div className="page-header">
+          <div className="skeleton-loader" style={{ height: 32, width: 250, marginBottom: 8, borderRadius: 4 }} />
+          <div className="skeleton-loader" style={{ height: 20, width: 400, borderRadius: 4 }} />
+        </div>
+        <div className="grid grid-cols-3 gap-6">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="card">
+              <div className="card-body p-5">
+                <div className="skeleton-loader" style={{ height: 140, borderRadius: 8, marginBottom: 20 }} />
+                <div className="skeleton-loader" style={{ height: 24, width: '70%', marginBottom: 12, borderRadius: 4 }} />
+                <div className="skeleton-loader" style={{ height: 16, width: '40%', marginBottom: 24, borderRadius: 4 }} />
+                <div className="skeleton-loader" style={{ height: 40, borderRadius: 8 }} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: '700', letterSpacing: '-0.025em' }}>Paint Catalog</h2>
-        <p className="text-muted" style={{ marginTop: '0.25rem' }}>Browse our premium paint collection and select one to get a quotation</p>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Paint Catalog</h2>
+          <p className="text-muted mt-2">Browse our premium paint collection and select one to get a quotation</p>
+        </div>
       </div>
 
-      {error && (
-        <div className="auth-error" style={{ marginBottom: '1.5rem' }}>
-          Could not load products from server. Please check your connection.
-        </div>
-      )}
-
-      {products.length === 0 && !error ? (
-        <div className="card text-center" style={{ padding: '3rem' }}>
-          <p className="text-muted">No products available yet.</p>
+      {products.length === 0 ? (
+        <div className="card empty-state">
+          <p>No products available yet.</p>
         </div>
       ) : (
         <div className="grid grid-cols-3">
           {products.map(p => (
-            <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-              {/* Color swatch */}
-              <div style={{
-                width: '100%',
-                height: '120px',
-                background: `linear-gradient(135deg, ${getColorDisplay(p.color)}, ${getColorDisplay(p.color)}dd)`,
-                borderRadius: 'var(--radius-md)',
-                marginBottom: '1rem',
-                border: '1px solid var(--border)',
-                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)'
-              }}></div>
+            <div key={p.id} className="card">
+              <div className="card-body flex-col" style={{ padding: '1.25rem' }}>
+                {/* Color swatch */}
+                <div style={{
+                  width: '100%',
+                  height: '140px',
+                  background: `linear-gradient(135deg, ${getColorDisplay(p.color)}, ${getColorDisplay(p.color)}dd)`,
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: '1.25rem',
+                  border: '1px solid var(--border-color)',
+                  boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                }}></div>
 
-              <h3 style={{ fontSize: '1.15rem', fontWeight: '600' }}>{p.name}</h3>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                <span style={{
-                  background: 'var(--primary-light)',
-                  color: 'var(--primary)',
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600'
-                }}>{p.type}</span>
-                <span style={{
-                  background: 'rgba(16,185,129,0.1)',
-                  color: 'var(--secondary)',
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: '9999px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600'
-                }}>{p.color}</span>
-              </div>
+                <h3 className="text-lg font-semibold text-main mb-2">{p.name}</h3>
+                
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  <span className="badge badge-blue">{p.type}</span>
+                  <span className="badge badge-green">{p.color}</span>
+                </div>
 
-              <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span className="text-muted" style={{ fontSize: '0.85rem' }}>Coverage</span>
-                  <span style={{ fontWeight: '600', fontSize: '0.85rem' }}>{p.coverage_sqft_per_liter} sq ft/L</span>
+                <div className="mt-auto pt-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-muted">Coverage</span>
+                    <span className="text-sm font-semibold">{p.coverage_sqft_per_liter} sq ft/L</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-sm text-muted">Price</span>
+                    <span className="text-xl font-semibold text-primary">₹{p.price_per_liter}/L</span>
+                  </div>
+                  <button 
+                    className="btn btn-primary w-full" 
+                    onClick={() => handleSelect(p)}
+                  >
+                    Select & Get Quote
+                  </button>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <span className="text-muted" style={{ fontSize: '0.85rem' }}>Price</span>
-                  <span style={{ fontWeight: '700', fontSize: '1.25rem', color: 'var(--primary)' }}>₹{p.price_per_liter}/L</span>
-                </div>
-                <button 
-                  className="btn btn-primary" 
-                  style={{ width: '100%' }}
-                  onClick={() => handleSelect(p)}
-                >
-                  Select & Get Quote
-                </button>
               </div>
             </div>
           ))}

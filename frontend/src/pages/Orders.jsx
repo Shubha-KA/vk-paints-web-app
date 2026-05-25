@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 const API_BASE = '';
 
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -14,7 +14,7 @@ export default function Orders() {
   const fetchOrders = async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) {
-      setError('Please log in to view orders');
+      toast.error('Please log in to view orders');
       setLoading(false);
       return;
     }
@@ -25,7 +25,7 @@ export default function Orders() {
       const data = await res.json();
       setOrders(data);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -52,79 +52,78 @@ export default function Orders() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px', borderColor: 'rgba(99,102,241,0.2)', borderTopColor: 'var(--primary)' }}></div>
+      <div>
+        <div className="page-header">
+          <div className="skeleton-loader" style={{ height: 32, width: 200, marginBottom: 8, borderRadius: 4 }} />
+          <div className="skeleton-loader" style={{ height: 20, width: 300, borderRadius: 4 }} />
+        </div>
+        <div className="table-container p-4">
+          {[1,2,3,4].map(i => <div key={i} className="skeleton-loader" style={{ height: 48, marginBottom: 12, borderRadius: 8 }} />)}
+        </div>
       </div>
     );
   }
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: '700', letterSpacing: '-0.025em' }}>My Orders</h2>
-        <p className="text-muted" style={{ marginTop: '0.25rem' }}>Track your paint orders and delivery status</p>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">My Orders</h2>
+          <p className="text-muted mt-2">Track your paint orders and delivery status</p>
+        </div>
       </div>
 
-      {error && <div className="auth-error">{error}</div>}
-
-      {orders.length === 0 && !error ? (
-        <div className="card text-center" style={{ padding: '3rem' }}>
+      {orders.length === 0 ? (
+        <div className="card empty-state">
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
-          <h3 style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>No orders yet</h3>
+          <h3>No orders yet</h3>
           <p className="text-muted">Browse the catalog and place your first order!</p>
         </div>
-      ) : orders.length > 0 && (
-        <div className="card" style={{ overflow: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+      ) : (
+        <div className="table-container">
+          <table className="modern-table">
             <thead>
-              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Order ID</th>
-                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</th>
-                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Products</th>
-                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Labour</th>
-                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Cost</th>
-                <th style={{ padding: '0.85rem 1rem', fontWeight: '600', color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</th>
+              <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Products</th>
+                <th>Labour</th>
+                <th>Total Cost</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {orders.map(o => {
                 const isLegacy = !o.items;
                 return (
-                  <tr key={o.id} style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.2s' }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '1rem', fontWeight: '600', color: 'var(--primary)' }}>#{o.id}</td>
-                    <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{formatDate(o.createdAt)}</td>
-                    <td style={{ padding: '1rem' }}>
+                  <tr key={o.id}>
+                    <td className="font-semibold text-primary">#{o.id}</td>
+                    <td className="text-muted">{formatDate(o.createdAt)}</td>
+                    <td>
                       {isLegacy ? (
                         <span>Legacy Order ({o.liters} L)</span>
                       ) : (
                         <div>
                           {o.items.map((item, i) => (
-                            <div key={i} style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            <div key={i} className="text-sm text-secondary">
                               • {item.name} ({item.liters} L)
                             </div>
                           ))}
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td>
                       {o.requires_labour ? (
-                        <span style={{ color: '#047857', fontWeight: '600', fontSize: '0.85rem' }}>✓ Requested</span>
+                        <span className="badge badge-green">✓ Requested</span>
                       ) : (
-                        <span style={{ color: '#9CA3AF', fontSize: '0.85rem' }}>Not Needed</span>
+                        <span className="badge badge-gray">Not Needed</span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem', fontWeight: '700' }}>₹{o.total_cost?.toLocaleString()}</td>
-                    <td style={{ padding: '1rem' }}>
-                      <span style={{
+                    <td className="font-semibold text-main">₹{o.total_cost?.toLocaleString()}</td>
+                    <td>
+                      <span className="badge" style={{
                         backgroundColor: getStatusColor(o.status) + '18',
-                        color: getStatusColor(o.status),
-                        padding: '0.3rem 0.85rem',
-                        borderRadius: '9999px',
-                        fontWeight: '600',
-                        fontSize: '0.8rem',
-                        letterSpacing: '0.02em'
+                        color: getStatusColor(o.status)
                       }}>
                         {o.status}
                       </span>

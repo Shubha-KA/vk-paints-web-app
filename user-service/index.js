@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const { Sequelize, DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
@@ -6,7 +7,7 @@ const jwt = require('jsonwebtoken');
 const app = express();
 app.use(express.json());
 
-const sequelize = new Sequelize(process.env.DB_URL || 'postgres://postgres:postgres@localhost:5432/user_db');
+const sequelize = new Sequelize(process.env.DB_URL || 'sqlite:database.sqlite');
 
 const User = sequelize.define('User', {
     name: { type: DataTypes.STRING, allowNull: false },

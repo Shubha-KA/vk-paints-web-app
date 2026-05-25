@@ -3,29 +3,28 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const API_BASE = '';
 
+import { Paintbrush } from 'lucide-react';
+import toast from 'react-hot-toast';
+
 export default function Signup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('Customer');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      toast.error('Password must be at least 6 characters');
       return;
     }
 
@@ -43,10 +42,10 @@ export default function Signup() {
         throw new Error(data.error || 'Registration failed');
       }
 
-      setSuccess('Account created successfully! Redirecting to login...');
+      toast.success('Account created successfully! Redirecting to login...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.message);
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
@@ -54,20 +53,15 @@ export default function Signup() {
 
   return (
     <div className="auth-page">
-      <div className="floating-shape"></div>
-      <div className="floating-shape"></div>
-      <div className="floating-shape"></div>
-
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-logo">
-            <div className="logo-icon">🎨</div>
+            <div className="flex justify-center mb-4">
+              <Paintbrush size={48} className="text-primary" style={{ color: 'var(--primary)' }} />
+            </div>
             <h1>Create Account</h1>
             <p>Join V K Paints and start ordering</p>
           </div>
-
-          {error && <div className="auth-error">{error}</div>}
-          {success && <div className="auth-success">{success}</div>}
 
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -134,7 +128,7 @@ export default function Signup() {
               </select>
             </div>
 
-            <button type="submit" className="auth-btn auth-btn-primary" disabled={loading}>
+            <button type="submit" className="btn btn-primary w-full mt-4" disabled={loading} style={{ padding: '0.75rem' }}>
               {loading ? <><span className="spinner"></span> Creating Account...</> : 'Create Account'}
             </button>
           </form>

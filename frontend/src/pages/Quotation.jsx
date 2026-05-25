@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import toast from 'react-hot-toast';
 
 const API_BASE = '';
 
@@ -89,13 +90,13 @@ export default function Quotation() {
   const placeOrder = async () => {
     const userId = localStorage.getItem('userId');
     if (!userId) {
-      alert('Please log in to place an order');
+      toast.error('Please log in to place an order');
       navigate('/login');
       return;
     }
 
     if (!selectedRetailer) {
-      alert('Please select a nearest retail shop to fulfill your order.');
+      toast.error('Please select a nearest retail shop to fulfill your order.');
       return;
     }
 
@@ -132,8 +133,9 @@ export default function Quotation() {
 
       if (!res.ok) throw new Error('Failed to place order');
       setOrderPlaced(true);
+      toast.success('Order placed successfully!');
     } catch (err) {
-      alert('Error placing order: ' + err.message);
+      toast.error('Error placing order: ' + err.message);
     } finally {
       setOrderLoading(false);
     }
@@ -179,106 +181,110 @@ export default function Quotation() {
   }, {});
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '2rem' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', paddingBottom: '2rem' }}>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Smart Quotation Builder</h2>
+          <p className="text-muted mt-2">Select multiple products to estimate costs</p>
+        </div>
+        {isCalculated && (
+          <button className="btn btn-secondary" onClick={downloadPDF}>
+            📄 Download PDF
+          </button>
+        )}
+      </div>
+
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div>
-            <h2 style={{ fontSize: '1.75rem', fontWeight: '700', marginBottom: '0.25rem' }}>Smart Quotation Builder</h2>
-            <p className="text-muted">Select multiple products to estimate costs</p>
+        <div className="card-body">
+          {lineItems.map((item) => (
+            <div key={item.id} className="p-4 mb-4" style={{
+              background: 'var(--slate-50)',
+              borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', position: 'relative'
+            }}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Select Product / Category</label>
+                  <select className="form-select" value={item.productId} onChange={(e) => updateLineItem(item.id, 'productId', e.target.value)}>
+                    <option value="">-- Select Product --</option>
+                    {Object.keys(groupedProducts).map(type => (
+                      <optgroup label={type} key={type}>
+                        {groupedProducts[type].map(p => (
+                          <option key={p.id} value={p.id}>{p.name} (Coverage: {p.coverage_sqft_per_liter} sqft/L - ₹{p.price_per_liter}/L)</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label">Wall Area (Sq Ft)</label>
+                  <input type="number" value={item.area} onChange={(e) => updateLineItem(item.id, 'area', Number(e.target.value))} className="form-input" />
+                </div>
+              </div>
+              
+              {lineItems.length > 1 && (
+                <button onClick={() => removeLineItem(item.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.2rem', padding: '5px', lineHeight: 1 }} title="Remove Item">×</button>
+              )}
+              
+              {item.calculated && item.productId && (
+                <div className="mt-4 p-4 flex justify-between items-center" style={{ background: 'var(--secondary-light)', borderRadius: 'var(--radius-md)', color: 'var(--secondary-hover)' }}>
+                  <span className="font-semibold text-sm">Requirement: {item.liters} L</span>
+                  <span className="font-semibold text-sm">Cost: ₹{item.cost.toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div className="flex gap-4 mt-6">
+            <button className="btn btn-ghost" style={{ flex: 1, border: '2px dashed var(--primary-light)', color: 'var(--primary)' }} onClick={addLineItem}>+ Add Product</button>
+            <button className="btn btn-primary" style={{ flex: 2 }} onClick={calculate}>Calculate Total Estimate</button>
           </div>
+          
           {isCalculated && (
-            <button className="btn btn-secondary" onClick={downloadPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              📄 Download PDF
-            </button>
+            <div className="mt-8 p-6" style={{ background: 'linear-gradient(135deg, var(--secondary-light), #A7F3D0)', borderRadius: 'var(--radius-lg)', border: '1px solid #6EE7B7' }}>
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-lg" style={{ color: 'var(--secondary-hover)' }}>Grand Total</span>
+                <span className="text-2xl font-bold" style={{ color: '#047857' }}>₹{totalCost.toLocaleString()}</span>
+              </div>
+
+              <div className="p-6 bg-white mb-6" style={{ borderRadius: 'var(--radius-md)' }}>
+                <h4 className="font-semibold text-main mb-4">Delivery & Fulfullment</h4>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Nearest Location (City)</label>
+                    <select className="form-select" value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedRetailer(''); }}>
+                      <option value="">-- Select City --</option>
+                      {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
+                    </select>
+                  </div>
+                  
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Select Retail Store</label>
+                    <select className="form-select" value={selectedRetailer} onChange={(e) => setSelectedRetailer(e.target.value)} disabled={!selectedCity}>
+                      <option value="">-- Select Store --</option>
+                      {filteredRetailers.map(r => <option key={r.id} value={r.id}>{r.name} ({r.address})</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-4">
+                  <input type="checkbox" id="labourCheck" checked={requiresLabour} onChange={(e) => setRequiresLabour(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} />
+                  <label htmlFor="labourCheck" className="text-sm font-semibold cursor-pointer text-main">I need a Labour Facility (Painters / Contractors)</label>
+                </div>
+              </div>
+
+              {!orderPlaced ? (
+                <button className="btn btn-secondary w-full" style={{ padding: '1rem', fontSize: '1rem', backgroundColor: '#047857', color: 'white', border: 'none' }} onClick={placeOrder} disabled={orderLoading}>
+                  {orderLoading ? 'Processing Order...' : 'Confirm & Place Order'}
+                </button>
+              ) : (
+                <div className="mt-4 p-4 text-center font-semibold" style={{ background: 'rgba(255,255,255,0.8)', borderRadius: 'var(--radius-md)', color: '#047857' }}>
+                  ✅ Order placed successfully! <a href="#" onClick={(e) => { e.preventDefault(); navigate('/orders'); }} style={{ color: '#047857', textDecoration: 'underline' }}>View My Orders</a>
+                </div>
+              )}
+            </div>
           )}
         </div>
-
-        {lineItems.map((item) => (
-          <div key={item.id} style={{
-            padding: '1.25rem', marginBottom: '1rem', background: 'var(--bg-light)',
-            borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', position: 'relative'
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Select Product / Category</label>
-                <select className="form-control" value={item.productId} onChange={(e) => updateLineItem(item.id, 'productId', e.target.value)}>
-                  <option value="">-- Select Product --</option>
-                  {Object.keys(groupedProducts).map(type => (
-                    <optgroup label={type} key={type}>
-                      {groupedProducts[type].map(p => (
-                        <option key={p.id} value={p.id}>{p.name} (Coverage: {p.coverage_sqft_per_liter} sqft/L - ₹{p.price_per_liter}/L)</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Wall Area (Sq Ft)</label>
-                <input type="number" value={item.area} onChange={(e) => updateLineItem(item.id, 'area', Number(e.target.value))} className="form-control" />
-              </div>
-            </div>
-            {lineItems.length > 1 && (
-              <button onClick={() => removeLineItem(item.id)} style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', fontSize: '1.2rem', padding: '5px' }} title="Remove Item">×</button>
-            )}
-            {item.calculated && item.productId && (
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(16,185,129,0.1)', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', color: '#065f46', fontSize: '0.9rem', fontWeight: '500' }}>
-                <span>Requirement: {item.liters} L</span>
-                <span>Cost: ₹{item.cost.toLocaleString()}</span>
-              </div>
-            )}
-          </div>
-        ))}
-
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-          <button className="btn" style={{ flex: 1, background: 'var(--primary-light)', color: 'var(--primary)' }} onClick={addLineItem}>+ Add Product</button>
-          <button className="btn btn-primary" style={{ flex: 2 }} onClick={calculate}>Calculate Total Estimate</button>
-        </div>
-        
-        {isCalculated && (
-          <div className="mt-4" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.15))', borderRadius: 'var(--radius-md)', border: '1px solid rgba(16,185,129,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <span style={{ fontSize: '1.2rem', color: '#065f46' }}>Grand Total</span>
-              <span style={{ fontSize: '2rem', fontWeight: '700', color: '#047857' }}>₹{totalCost.toLocaleString()}</span>
-            </div>
-
-            <div style={{ background: 'white', padding: '1.25rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
-              <h4 style={{ fontSize: '1rem', fontWeight: '600', marginBottom: '1rem', color: 'var(--text-main)' }}>Delivery & Fulfullment</h4>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Nearest Location (City)</label>
-                  <select className="form-control" value={selectedCity} onChange={(e) => { setSelectedCity(e.target.value); setSelectedRetailer(''); }}>
-                    <option value="">-- Select City --</option>
-                    {availableCities.map(city => <option key={city} value={city}>{city}</option>)}
-                  </select>
-                </div>
-                
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Select Retail Store</label>
-                  <select className="form-control" value={selectedRetailer} onChange={(e) => setSelectedRetailer(e.target.value)} disabled={!selectedCity}>
-                    <option value="">-- Select Store --</option>
-                    {filteredRetailers.map(r => <option key={r.id} value={r.id}>{r.name} ({r.address})</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-                <input type="checkbox" id="labourCheck" checked={requiresLabour} onChange={(e) => setRequiresLabour(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} />
-                <label htmlFor="labourCheck" style={{ fontWeight: '500', cursor: 'pointer' }}>I need a Labour Facility (Painters / Contractors)</label>
-              </div>
-            </div>
-
-            {!orderPlaced ? (
-              <button className="btn btn-secondary mt-4" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} onClick={placeOrder} disabled={orderLoading}>
-                {orderLoading ? 'Processing Order...' : 'Confirm & Place Order'}
-              </button>
-            ) : (
-              <div className="mt-4" style={{ padding: '1rem', background: 'rgba(16,185,129,0.15)', borderRadius: 'var(--radius-md)', textAlign: 'center', color: '#065f46', fontWeight: '600' }}>
-                ✅ Order placed successfully! <a href="#" onClick={(e) => { e.preventDefault(); navigate('/orders'); }} style={{ color: '#047857' }}>View My Orders</a>
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

@@ -1,245 +1,439 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts';
 
 const API_BASE = '';
 
+/* ─── Skeleton Loader ─── */
+function SkeletonBlock({ h = 40, mb = 12, radius = 8 }) {
+  return <div className="skeleton-loader" style={{ height: h, marginBottom: mb, borderRadius: radius }} />;
+}
+
+/* ─── KPI Card ─── */
+const KpiCard = memo(function KpiCard({ label, value, delta, deltaDir, icon, accent }) {
+  return (
+    <div className="kpi-card">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <div className="kpi-label">{label}</div>
+          <div className="kpi-value" style={{ color: accent || 'var(--text-main)' }}>{value}</div>
+          {delta && <div className={`kpi-delta ${deltaDir}`}>{deltaDir === 'up' ? '▲' : '▼'} {delta}</div>}
+        </div>
+        <div style={{
+          width: 44, height: 44, borderRadius: 'var(--radius-lg)',
+          background: accent ? accent + '18' : 'var(--primary-light)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '1.4rem'
+        }}>{icon}</div>
+      </div>
+    </div>
+  );
+});
+
+/* ─── Memoized Orders Table ─── */
+const OrdersTable = memo(function OrdersTable({ orders, users, retailers, onUpdateStatus, onNotify }) {
+  if (orders.length === 0) return (
+    <div className="empty-state"><p>No orders yet.</p></div>
+  );
+  return (
+    <div className="table-container" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
+      <table className="modern-table">
+        <thead>
+          <tr>
+            <th>ID</th><th>Customer</th><th>Items</th>
+            <th>Labour</th><th>Retailer</th><th>Total</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map(o => {
+            const user = users.find(u => u.id === o.userId);
+            const retailer = retailers.find(r => r.id === o.retailerId);
+            return (
+              <tr key={o.id}>
+                <td className="font-semibold text-primary">#{o.id}</td>
+                <td>
+                  <div className="font-semibold">{user ? user.name : `User ${o.userId}`}</div>
+                  <div className="text-sm text-muted">{user?.email || ''}</div>
+                </td>
+                <td>{o.items ? o.items.length + ' items' : (o.liters || 0) + ' L'}</td>
+                <td>{o.requires_labour ? <span className="badge badge-green">Yes</span> : <span className="badge badge-gray">No</span>}</td>
+                <td className="text-sm">{retailer ? retailer.name : '—'}</td>
+                <td className="font-semibold">₹{o.total_cost?.toLocaleString() || '—'}</td>
+                <td>
+                  <select
+                    value={o.status}
+                    onChange={e => onUpdateStatus(o.id, e.target.value)}
+                    className="form-select"
+                    style={{ padding: '0.35rem 2rem 0.35rem 0.6rem', fontSize: '0.82rem' }}
+                  >
+                    {['Placed','Approved','Assigned','Dispatched','Delivered'].map(s =>
+                      <option key={s} value={s}>{s}</option>
+                    )}
+                  </select>
+                </td>
+                <td>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem' }}
+                    onClick={() => onNotify(o)}
+                  >
+                    📧 Notify
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+});
+
+/* ─── Main Component ─── */
 export default function AdminDashboard() {
   const { tab } = useParams();
   const activeTab = tab || 'orders';
-  
-  const [orders, setOrders] = useState([]);
+
+  const [orders, setOrders]       = useState([]);
   const [retailers, setRetailers] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [products, setProducts]   = useState([]);
+  const [users, setUsers]         = useState([]);
+  const [loading, setLoading]     = useState(true);
 
-  // New Retailer Form State
-  const [newRetailer, setNewRetailer] = useState({ name: '', city: '', email: '', lat: 0, lng: 0, address: '' });
-  // New Product Form State
-  const [newProduct, setNewProduct] = useState({ name: '', type: 'Interior', color: '', price_per_liter: 0, coverage_sqft_per_liter: 100 });
+  const [newRetailer, setNewRetailer] = useState({ name:'', city:'', email:'', lat:0, lng:0, address:'' });
+  const [newProduct, setNewProduct]   = useState({ name:'', type:'Interior', color:'', price_per_liter:0, coverage_sqft_per_liter:100 });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, retailersRes, productsRes, usersRes] = await Promise.all([
+      const [oR, rtR, pR, uR] = await Promise.all([
         fetch(`${API_BASE}/orders`),
         fetch(`${API_BASE}/retailers`),
         fetch(`${API_BASE}/products`),
         fetch(`${API_BASE}/users`)
       ]);
-      setOrders(ordersRes.ok ? await ordersRes.json() : []);
-      setRetailers(retailersRes.ok ? await retailersRes.json() : []);
-      setProducts(productsRes.ok ? await productsRes.json() : []);
-      setUsers(usersRes.ok ? await usersRes.json() : []);
+      setOrders(   oR.ok  ? await oR.json()  : []);
+      setRetailers(rtR.ok ? await rtR.json() : []);
+      setProducts( pR.ok  ? await pR.json()  : []);
+      setUsers(    uR.ok  ? await uR.json()  : []);
     } catch (err) {
-      console.error('Failed to fetch admin data', err);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
+  /* ─── KPI derivations (memoised) ─── */
+  const kpis = useMemo(() => {
+    const totalRevenue = orders.reduce((s, o) => s + (o.total_cost || 0), 0);
+    const delivered    = orders.filter(o => o.status === 'Delivered').length;
+    const pending      = orders.filter(o => !['Delivered','Placed'].includes(o.status)).length;
+    return { totalRevenue, delivered, pending, totalOrders: orders.length };
+  }, [orders]);
+
+  /* ─── Chart data (memoised) ─── */
+  const ordersByStatus = useMemo(() => {
+    const counts = {};
+    orders.forEach(o => { counts[o.status] = (counts[o.status] || 0) + 1; });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [orders]);
+
+  const revenueByProduct = useMemo(() => {
+    const rev = {};
+    orders.forEach(o => {
+      if (o.items) o.items.forEach(item => {
+        rev[item.name] = (rev[item.name] || 0) + item.cost;
+      });
+    });
+    return Object.entries(rev).slice(0,6).map(([name, revenue]) => ({ name: name.length > 12 ? name.slice(0,12)+'…' : name, revenue }));
+  }, [orders]);
+
+  const activityTimeline = useMemo(() =>
+    [...orders]
+      .sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 6)
+      .map(o => {
+        const u = users.find(u => u.id === o.userId);
+        const colors = { Delivered:'#10B981', Dispatched:'#3B82F6', Approved:'#8B5CF6', Assigned:'#F97316', Placed:'#F59E0B' };
+        return {
+          id: o.id,
+          text: `Order #${o.id} ${o.status.toLowerCase()} by ${u?.name || 'user'}`,
+          time: new Date(o.createdAt).toLocaleDateString('en-IN', { month:'short', day:'numeric' }),
+          color: colors[o.status] || '#6B7280',
+          initial: o.status[0]
+        };
+      })
+  , [orders, users]);
+
+  const PIE_COLORS = ['#4F46E5','#10B981','#F59E0B','#EF4444','#8B5CF6'];
+
+  /* ─── Handlers ─── */
   const handleAddRetailer = async (e) => {
     e.preventDefault();
+    const id = toast.loading('Adding retailer…');
     try {
       const res = await fetch(`${API_BASE}/retailers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newRetailer)
       });
-      if (!res.ok) {
-        const isJson = res.headers.get("content-type")?.includes("application/json");
-        const errorData = isJson ? await res.json() : { error: await res.text() };
-        throw new Error(errorData.error || 'Failed to add retailer');
-      }
-      alert('Retailer added');
-      setNewRetailer({ name: '', city: '', email: '', lat: 0, lng: 0, address: '' });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+      toast.success('Retailer added successfully!', { id });
+      setNewRetailer({ name:'', city:'', email:'', lat:0, lng:0, address:'' });
       fetchData();
-    } catch (err) {
-      alert('Error: ' + err.message);
-    }
+    } catch (err) { toast.error(err.message, { id }); }
   };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    const id = toast.loading('Adding product…');
     try {
       const res = await fetch(`${API_BASE}/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newProduct)
       });
-      if (!res.ok) {
-        const isJson = res.headers.get("content-type")?.includes("application/json");
-        const errorData = isJson ? await res.json() : { error: await res.text() };
-        throw new Error(errorData.error || 'Failed to add product');
-      }
-      alert('Product added');
-      setNewProduct({ name: '', type: 'Interior', color: '', price_per_liter: 0, coverage_sqft_per_liter: 100 });
+      if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+      toast.success('Product added successfully!', { id });
+      setNewProduct({ name:'', type:'Interior', color:'', price_per_liter:0, coverage_sqft_per_liter:100 });
       fetchData();
-    } catch (err) {
-      alert('Error: ' + err.message);
-    }
+    } catch (err) { toast.error(err.message, { id }); }
   };
 
   const handleNotifyRetailer = async (order) => {
     const retailer = retailers.find(r => r.id === order.retailerId);
-    if (!retailer || !retailer.email) {
-      alert('Retailer not found or missing email');
-      return;
-    }
+    if (!retailer?.email) { toast.error('Retailer email not found'); return; }
+    const id = toast.loading('Notifying retailer…');
     try {
       const res = await fetch(`${API_BASE}/orders/${order.id}/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: 'RETAILER', email: retailer.email })
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target:'RETAILER', email: retailer.email })
       });
-      if (res.ok) alert('Retailer notified successfully!');
-    } catch (err) {
-      alert('Error: ' + err.message);
-    }
+      if (res.ok) toast.success('Retailer notified!', { id });
+      else toast.error('Notification failed', { id });
+    } catch (err) { toast.error(err.message, { id }); }
   };
 
   const handleUpdateStatus = async (orderId, status) => {
     const order = orders.find(o => o.id === orderId);
-    const user = users.find(u => u.id === order.userId);
+    const user  = users.find(u => u.id === order?.userId);
+    const id = toast.loading('Updating status…');
     try {
       const res = await fetch(`${API_BASE}/orders/${orderId}/status`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, userEmail: user?.email })
       });
       if (res.ok) {
-        alert(`Status updated to ${status}. Customer notified.`);
+        toast.success(`Status → ${status}. Customer notified.`, { id });
         fetchData();
-      }
-    } catch (err) {
-      alert('Error: ' + err.message);
-    }
+      } else toast.error('Update failed', { id });
+    } catch (err) { toast.error(err.message, { id }); }
   };
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading Admin Dashboard...</div>;
+  /* ─── Loading skeleton ─── */
+  if (loading) return (
+    <div>
+      <div className="kpi-grid">
+        {[1,2,3,4].map(i => <SkeletonBlock key={i} h={100} />)}
+      </div>
+      <div className="grid grid-cols-2 gap-6">
+        <SkeletonBlock h={260} />
+        <SkeletonBlock h={260} />
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', paddingBottom: '2rem' }}>
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.75rem', fontWeight: '700' }}>
-          {activeTab === 'orders' ? 'Order Management' : activeTab === 'retailers' ? 'Retail Management' : 'Product Management'}
-        </h2>
-        <p className="text-muted">Manage your platform data</p>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', paddingBottom: '2rem' }}>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">
+            {activeTab === 'orders' ? 'Order Management'
+              : activeTab === 'retailers' ? 'Retail Management'
+              : 'Product Management'}
+          </h2>
+          <p className="text-muted mt-2">Manage your platform data and operations</p>
+        </div>
       </div>
 
+      {/* ─── Orders tab ─── */}
       {activeTab === 'orders' && (
-        <div className="card">
-          <h3 style={{ marginBottom: '1rem', fontWeight: '600' }}>Customer Orders</h3>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                <th style={{ padding: '0.75rem' }}>ID</th>
-                <th style={{ padding: '0.75rem' }}>Customer</th>
-                <th style={{ padding: '0.75rem' }}>Items</th>
-                <th style={{ padding: '0.75rem' }}>Labour</th>
-                <th style={{ padding: '0.75rem' }}>Retailer</th>
-                <th style={{ padding: '0.75rem' }}>Status</th>
-                <th style={{ padding: '0.75rem' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => {
-                const user = users.find(u => u.id === o.userId);
-                const retailer = retailers.find(r => r.id === o.retailerId);
-                return (
-                  <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '0.75rem', fontWeight: '600' }}>#{o.id}</td>
-                    <td style={{ padding: '0.75rem' }}>{user ? `${user.name} (${user.email})` : o.userId}</td>
-                    <td style={{ padding: '0.75rem' }}>{o.items ? o.items.length + ' items' : o.liters + ' L'}</td>
-                    <td style={{ padding: '0.75rem' }}>{o.requires_labour ? 'Yes' : 'No'}</td>
-                    <td style={{ padding: '0.75rem' }}>{retailer ? retailer.name : 'N/A'}</td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <select 
-                        value={o.status} 
-                        onChange={(e) => handleUpdateStatus(o.id, e.target.value)}
-                        style={{ padding: '0.25rem', borderRadius: '4px', border: '1px solid var(--border)' }}
-                      >
-                        <option value="Placed">Placed</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Assigned">Assigned</option>
-                        <option value="Dispatched">Dispatched</option>
-                        <option value="Delivered">Delivered</option>
-                      </select>
-                    </td>
-                    <td style={{ padding: '0.75rem' }}>
-                      <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '0.25rem 0.5rem' }} onClick={() => handleNotifyRetailer(o)}>
-                        📧 Notify Retailer
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div>
+          {/* KPI Row */}
+          <div className="kpi-grid">
+            <KpiCard label="Total Orders"   value={kpis.totalOrders}   delta="vs last month" deltaDir="up"   icon="📦" accent="#4F46E5" />
+            <KpiCard label="Total Revenue"  value={`₹${kpis.totalRevenue.toLocaleString()}`} delta="growing" deltaDir="up" icon="💰" accent="#10B981" />
+            <KpiCard label="In Progress"    value={kpis.pending}       delta="active"        deltaDir="up"   icon="⚙️" accent="#F59E0B" />
+            <KpiCard label="Delivered"      value={kpis.delivered}     delta="completed"     deltaDir="up"   icon="✅" accent="#10B981" />
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-2 gap-6 mb-6">
+            {/* Orders by Status Pie */}
+            <div className="chart-card">
+              <div className="chart-title">Orders by Status</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={ordersByStatus} cx="50%" cy="50%" outerRadius={80}
+                    dataKey="value" label={({ name, value }) => `${name}: ${value}`}
+                    labelLine={false}
+                  >
+                    {ordersByStatus.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border-color)', borderRadius: 8, fontSize: '0.8rem' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Revenue by Product Bar */}
+            <div className="chart-card">
+              <div className="chart-title">Revenue by Product</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={revenueByProduct} barSize={24}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} tickFormatter={v => '₹'+v} />
+                  <Tooltip
+                    formatter={v => ['₹'+v.toLocaleString(), 'Revenue']}
+                    contentStyle={{ background:'var(--bg-surface)', border:'1px solid var(--border-color)', borderRadius:8, fontSize:'0.8rem' }}
+                  />
+                  <Bar dataKey="revenue" fill="#4F46E5" radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Timeline + Orders Table */}
+          <div className="grid grid-cols-2 gap-6 mb-6" style={{ gridTemplateColumns: '1fr 2fr' }}>
+            {/* Activity Timeline */}
+            <div className="card">
+              <div className="card-header"><h3 className="card-title">Recent Activity</h3></div>
+              <div className="card-body">
+                {activityTimeline.length === 0 ? (
+                  <div className="empty-state"><p>No recent activity.</p></div>
+                ) : (
+                  <div className="timeline">
+                    {activityTimeline.map(item => (
+                      <div key={item.id} className="timeline-item">
+                        <div className="timeline-dot" style={{ background: item.color + '20', color: item.color }}>
+                          {item.initial}
+                        </div>
+                        <div className="timeline-content">
+                          <div className="timeline-text">{item.text}</div>
+                          <div className="timeline-time">{item.time}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Orders Table */}
+            <div className="card">
+              <div className="card-header"><h3 className="card-title">All Orders</h3></div>
+              <OrdersTable
+                orders={orders} users={users} retailers={retailers}
+                onUpdateStatus={handleUpdateStatus}
+                onNotify={handleNotifyRetailer}
+              />
+            </div>
+          </div>
         </div>
       )}
 
+      {/* ─── Retailers tab ─── */}
       {activeTab === 'retailers' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className="grid grid-cols-2 gap-6">
           <div className="card">
-            <h3 style={{ marginBottom: '1rem', fontWeight: '600' }}>Add New Retailer</h3>
-            <form onSubmit={handleAddRetailer}>
-              <div className="form-group"><label>Name</label><input type="text" className="form-control" value={newRetailer.name} onChange={e=>setNewRetailer({...newRetailer, name: e.target.value})} required/></div>
-              <div className="form-group"><label>City</label><input type="text" className="form-control" value={newRetailer.city} onChange={e=>setNewRetailer({...newRetailer, city: e.target.value})} required/></div>
-              <div className="form-group"><label>Email</label><input type="email" className="form-control" value={newRetailer.email} onChange={e=>setNewRetailer({...newRetailer, email: e.target.value})} required/></div>
-              <div className="form-group"><label>Address</label><input type="text" className="form-control" value={newRetailer.address} onChange={e=>setNewRetailer({...newRetailer, address: e.target.value})} required/></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group"><label>Latitude</label><input type="number" step="any" className="form-control" value={newRetailer.lat} onChange={e=>setNewRetailer({...newRetailer, lat: parseFloat(e.target.value)})} required/></div>
-                <div className="form-group"><label>Longitude</label><input type="number" step="any" className="form-control" value={newRetailer.lng} onChange={e=>setNewRetailer({...newRetailer, lng: parseFloat(e.target.value)})} required/></div>
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Retailer</button>
-            </form>
+            <div className="card-header"><h3 className="card-title">Add New Retailer</h3></div>
+            <div className="card-body">
+              <form onSubmit={handleAddRetailer}>
+                {[['Name','text','name'],['City','text','city'],['Email','email','email'],['Address','text','address']].map(([label,type,field]) => (
+                  <div className="form-group" key={field}>
+                    <label className="form-label">{label}</label>
+                    <input type={type} className="form-input" value={newRetailer[field]}
+                      onChange={e => setNewRetailer({...newRetailer, [field]: e.target.value})} required />
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group"><label className="form-label">Latitude</label>
+                    <input type="number" step="any" className="form-input" value={newRetailer.lat}
+                      onChange={e => setNewRetailer({...newRetailer, lat: parseFloat(e.target.value)})} required /></div>
+                  <div className="form-group"><label className="form-label">Longitude</label>
+                    <input type="number" step="any" className="form-input" value={newRetailer.lng}
+                      onChange={e => setNewRetailer({...newRetailer, lng: parseFloat(e.target.value)})} required /></div>
+                </div>
+                <button type="submit" className="btn btn-primary w-full mt-4">Add Retailer</button>
+              </form>
+            </div>
           </div>
-          <div className="card" style={{ overflowY: 'auto', maxHeight: '500px' }}>
-            <h3 style={{ marginBottom: '1rem', fontWeight: '600' }}>Existing Retailers</h3>
-            {retailers.map(r => (
-              <div key={r.id} style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)' }}>
-                <strong>{r.name}</strong> ({r.city})<br/>
-                <small className="text-muted">{r.email} | {r.address}</small>
-              </div>
-            ))}
+          <div className="card" style={{ maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+            <div className="card-header"><h3 className="card-title">Existing Retailers ({retailers.length})</h3></div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {retailers.length === 0
+                ? <div className="empty-state"><p>No retailers yet.</p></div>
+                : retailers.map(r => (
+                  <div key={r.id} className="p-4" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <div className="font-semibold text-main">{r.name} <span className="text-sm font-normal text-muted">({r.city})</span></div>
+                    <div className="text-sm text-muted mt-2">{r.email} · {r.address}</div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}
 
+      {/* ─── Products tab ─── */}
       {activeTab === 'products' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        <div className="grid grid-cols-2 gap-6">
           <div className="card">
-            <h3 style={{ marginBottom: '1rem', fontWeight: '600' }}>Add New Product</h3>
-            <form onSubmit={handleAddProduct}>
-              <div className="form-group"><label>Name</label><input type="text" className="form-control" value={newProduct.name} onChange={e=>setNewProduct({...newProduct, name: e.target.value})} required/></div>
-              <div className="form-group"><label>Type/Category</label><input type="text" className="form-control" value={newProduct.type} onChange={e=>setNewProduct({...newProduct, type: e.target.value})} required/></div>
-              <div className="form-group"><label>Color</label><input type="text" className="form-control" value={newProduct.color} onChange={e=>setNewProduct({...newProduct, color: e.target.value})} required/></div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group"><label>Price/Liter (₹)</label><input type="number" className="form-control" value={newProduct.price_per_liter} onChange={e=>setNewProduct({...newProduct, price_per_liter: parseFloat(e.target.value)})} required/></div>
-                <div className="form-group"><label>Coverage (sqft/L)</label><input type="number" className="form-control" value={newProduct.coverage_sqft_per_liter} onChange={e=>setNewProduct({...newProduct, coverage_sqft_per_liter: parseFloat(e.target.value)})} required/></div>
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Product</button>
-            </form>
+            <div className="card-header"><h3 className="card-title">Add New Product</h3></div>
+            <div className="card-body">
+              <form onSubmit={handleAddProduct}>
+                {[['Name','text','name'],['Type/Category','text','type'],['Color','text','color']].map(([label,type,field]) => (
+                  <div className="form-group" key={field}>
+                    <label className="form-label">{label}</label>
+                    <input type={type} className="form-input" value={newProduct[field]}
+                      onChange={e => setNewProduct({...newProduct, [field]: e.target.value})} required />
+                  </div>
+                ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group"><label className="form-label">Price/Liter (₹)</label>
+                    <input type="number" className="form-input" value={newProduct.price_per_liter}
+                      onChange={e => setNewProduct({...newProduct, price_per_liter: parseFloat(e.target.value)})} required /></div>
+                  <div className="form-group"><label className="form-label">Coverage (sqft/L)</label>
+                    <input type="number" className="form-input" value={newProduct.coverage_sqft_per_liter}
+                      onChange={e => setNewProduct({...newProduct, coverage_sqft_per_liter: parseFloat(e.target.value)})} required /></div>
+                </div>
+                <button type="submit" className="btn btn-primary w-full mt-4">Add Product</button>
+              </form>
+            </div>
           </div>
-          <div className="card" style={{ overflowY: 'auto', maxHeight: '500px' }}>
-            <h3 style={{ marginBottom: '1rem', fontWeight: '600' }}>Existing Products</h3>
-            {products.map(p => (
-              <div key={p.id} style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between' }}>
-                <div>
-                  <strong>{p.name}</strong> <span style={{ fontSize: '0.8rem', background: 'var(--bg-light)', padding: '2px 6px', borderRadius: '4px' }}>{p.type}</span><br/>
-                  <small className="text-muted">{p.color} finish</small>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <strong>₹{p.price_per_liter}</strong>/L<br/>
-                  <small className="text-muted">{p.coverage_sqft_per_liter} sqft/L</small>
-                </div>
-              </div>
-            ))}
+          <div className="card" style={{ maxHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+            <div className="card-header"><h3 className="card-title">Existing Products ({products.length})</h3></div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {products.length === 0
+                ? <div className="empty-state"><p>No products yet.</p></div>
+                : products.map(p => (
+                  <div key={p.id} className="p-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <div>
+                      <div className="font-semibold text-main">{p.name} <span className="badge badge-gray" style={{ marginLeft: 6 }}>{p.type}</span></div>
+                      <div className="text-sm text-muted mt-1">{p.color} finish</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-primary">₹{p.price_per_liter}<span className="text-sm font-normal text-muted">/L</span></div>
+                      <div className="text-sm text-muted">{p.coverage_sqft_per_liter} sqft/L</div>
+                    </div>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
       )}
