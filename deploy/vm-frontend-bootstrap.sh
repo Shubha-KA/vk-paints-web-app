@@ -29,7 +29,7 @@ apt-get install -y nodejs
 
 echo "[2/4] Cloning repository..."
 rm -rf /tmp/vkpaints
-git clone https://github.com/shubha-ka/VK-Paints.git /tmp/vkpaints
+git clone https://github.com/Shubha-KA/vk-paints-web-app.git /tmp/vkpaints
 
 mkdir -p /var/www/vkpaints/frontend
 cp -r /tmp/vkpaints/frontend/* /var/www/vkpaints/frontend/
