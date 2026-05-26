@@ -1,6 +1,6 @@
 # V K Paints Selection & Ordering Platform
 
-This is a complete end-to-end web application designed with a clean microservices architecture. It consists of a React Frontend and highly optimized Node.js Backend services that are designed to be deployed directly on Virtual Machines (VMs) using automated bootstrap scripts.
+This is a complete end-to-end web application designed with a clean microservices architecture. It consists of a React Frontend and highly optimized Node.js Backend services that are designed to be deployed directly on Virtual Machines (VMs) and connect to Azure Database for PostgreSQL.
 
 ## Core Microservices
 - **User Service**: Authentication and role-based access control (runs on port `3001`).
@@ -13,31 +13,76 @@ This is a complete end-to-end web application designed with a clean microservice
 ## Technologies Used
 - Node.js & Express
 - React (Vite)
-- PostgreSQL
+- Azure Database for PostgreSQL (Flexible Server)
 - Nginx (Web Server and Reverse Proxy Gateway)
 
 ---
 
-## Deployment on Virtual Machines (Ubuntu / Debian)
+## Deployment Instructions
 
-All necessary automated provisioning files are located in the `deploy/` directory:
+All provisioning scripts are located in the `deploy/` directory:
 
-1. **Database VM Bootstrap (`deploy/db-bootstrap.sh`)**:
-   Installs PostgreSQL, configures remote authorization rules, and initializes `product_db`, `order_db`, and `retailer_db`.
-   ```bash
-   sudo ./db-bootstrap.sh "your_secure_password"
-   ```
+### 1. Backend Virtual Machine Deployment
+The backend VM hosts all Node.js microservices. The script will automatically install Node.js 20, create the necessary databases on your Azure PostgreSQL server, URL-encode the credentials to avoid connection string parsing errors, write `.env` config files, and configure `systemd` daemon services for automatic management.
 
-2. **Microservices VM Bootstrap (`deploy/service-bootstrap.sh`)**:
-   Installs Node.js v20 LTS, sets up a secure service user `vkpaints`, establishes dynamic Systemd service daemons, and starts services with auto-restart functionality.
-   ```bash
-   sudo ./service-bootstrap.sh <service-name> <port> <db-url>
-   ```
+Execute the following command on your Backend VM:
+```bash
+sudo chmod +x deploy/vm-backend-bootstrap.sh
+sudo ./deploy/vm-backend-bootstrap.sh <DB_HOST> <DB_USER> <DB_PASS>
+```
 
-3. **Frontend Nginx VM Bootstrap (`deploy/frontend-bootstrap.sh`)**:
-   Compiles React static bundles and configures Nginx to host the SPA while routing API requests matching `/users`, `/products`, `/orders`, and `/retailers` directly to their respective VM service IPs.
-   ```bash
-   sudo ./frontend-bootstrap.sh <USER-VM-IP> <PRODUCT-VM-IP> <ORDER-VM-IP> <RETAILER-VM-IP>
-   ```
+**Parameters:**
+* `<DB_HOST>`: The FQDN of your Azure Database for PostgreSQL (e.g., `vkpaints-pg-server.postgres.database.azure.com`).
+* `<DB_USER>`: Database administrator username (e.g., `vkadmin`).
+* `<DB_PASS>`: Database administrator password (e.g., `Admin@123!`).
 
-Refer to the [walkthrough.md](file:///C:/Users/Admin/.gemini/antigravity-ide/brain/2b43880f-f5a1-4b5e-a906-06a3db9956e2/walkthrough.md) artifact for a step-by-step VM deployment walkthrough.
+**Example:**
+```bash
+sudo ./deploy/vm-backend-bootstrap.sh vkpaints-pg-server.postgres.database.azure.com vkadmin 'Admin@123!'
+```
+
+---
+
+### 2. Frontend Virtual Machine Deployment
+The frontend VM hosts Nginx, serves the compiled React app, and acts as the API Gateway. The script will install Node.js and Nginx, clone the repository, compile the frontend assets, and set up the Nginx routing rules to proxy API requests to the Backend VM.
+
+Execute the following command on your Frontend VM:
+```bash
+sudo chmod +x deploy/vm-frontend-bootstrap.sh
+sudo ./deploy/vm-frontend-bootstrap.sh <BACKEND_VM_PRIVATE_IP>
+```
+
+**Parameters:**
+* `<BACKEND_VM_PRIVATE_IP>`: The private IP address of your backend VM (e.g., `10.2.1.4`).
+
+**Example:**
+```bash
+sudo ./deploy/vm-frontend-bootstrap.sh 10.2.1.4
+```
+
+---
+
+## Troubleshooting & Verification
+
+### Checking Backend Service Statuses
+To check the statuses of the backend services on the Backend VM:
+```bash
+# General service status
+systemctl status vkpaints-user-service
+systemctl status vkpaints-product-service
+systemctl status vkpaints-order-service
+systemctl status vkpaints-retailer-service
+systemctl status vkpaints-quotation-service
+
+# View live application logs
+journalctl -u vkpaints-user-service -f
+journalctl -u vkpaints-product-service -f
+```
+
+### Checking Frontend Nginx Gateway
+To check Nginx status or logs on the Frontend VM:
+```bash
+systemctl status nginx
+sudo nginx -t
+sudo tail -f /var/log/nginx/error.log
+```
