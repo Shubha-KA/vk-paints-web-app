@@ -40,3 +40,23 @@ yarn-error.log*
 Thumbs.db
 .vscode/
 .idea/
+
+# ===========================
+# Terraform (infrastructure as code — kept separate, not in app repo)
+# ===========================
+terraform/
+
+# Terraform state & secrets (even if terraform/ is ever added back)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
