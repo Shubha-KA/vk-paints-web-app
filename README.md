@@ -2,6 +2,9 @@
 
 This is a complete end-to-end web application designed with a clean microservices architecture. It consists of a React Frontend and highly optimized Node.js Backend services that are designed to be deployed directly on Virtual Machines (VMs) and connect to Azure Database for PostgreSQL.
 
+## 🏗️ Application Architecture
+![VK Paints Application Architecture](assets/architecture.png)
+
 ## Core Microservices
 - **User Service**: Authentication and role-based access control (runs on port `3001`).
 - **Product Service**: Manages the paint catalog and metadata (runs on port `3002`).
