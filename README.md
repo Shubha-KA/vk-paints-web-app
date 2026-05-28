@@ -20,6 +20,8 @@ This is a complete end-to-end web application designed with a clean microservice
 - Nginx (Web Server and Reverse Proxy Gateway)
 
 ---
+## 🏗️ CLoud Architecture
+![VK Paints Cloud Architecture](assets/Vkpaints-Architecture.png)
 
 ## Deployment Instructions
 
